@@ -31,14 +31,15 @@ def centered(d,text,font,y,fill):
     box=d.textbbox((0,0),text,font=font)
     d.text(((W-(box[2]-box[0]))/2,y),text,font=font,fill=fill)
 
+BACKGROUND=Image.new("RGB",(W,H),(7,15,28))
+BG_DRAW=ImageDraw.Draw(BACKGROUND)
+for row in range(H):
+    shade=int(row/H*19)
+    BG_DRAW.line((0,row,W,row),fill=(7+shade//3,15+shade,28+shade))
+
 def frame(n):
     t=n/FPS
-    im=Image.new("RGB",(W,H))
-    pix=im.load()
-    for y in range(H):
-        base=int(y/H*19)
-        for x in range(W):
-            pix[x,y]=(7+base//3,15+base,28+base)
+    im=BACKGROUND.copy()
     glow=Image.new("RGBA",(W,H),(0,0,0,0))
     gd=ImageDraw.Draw(glow)
     for i in range(13):
