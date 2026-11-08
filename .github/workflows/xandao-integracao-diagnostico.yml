@@ -1,0 +1,68 @@
+name: Xandao Studio - Diagnostico de Integracoes
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar-integracoes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Obter VoiceStudio
+        uses: actions/checkout@v4
+        with:
+          path: voicestudio
+
+      - name: Conectar OpenMontage
+        uses: actions/checkout@v4
+        with:
+          repository: xndmusic-star/openmontage
+          path: openmontage
+
+      - name: Conectar ElevenLabs JS
+        uses: actions/checkout@v4
+        with:
+          repository: xndmusic-star/elevenlabs-js
+          path: elevenlabs-js
+
+      - name: Conectar habilidades ElevenLabs
+        uses: actions/checkout@v4
+        with:
+          repository: xndmusic-star/skills
+          path: elevenlabs-skills
+
+      - name: Verificar conexoes e scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f voicestudio/package.json
+          test -f voicestudio/docs/xandao-video-production.md
+          test -f openmontage/xandao-video/microfonia.py
+          test -f elevenlabs-js/package.json
+          test -f elevenlabs-skills/README.md
+          python3 -m py_compile openmontage/xandao-video/microfonia.py
+          python3 - <<'PY'
+          import json
+          import pathlib
+          checks = {
+              "voicestudio": pathlib.Path("voicestudio/package.json").is_file(),
+              "openmontage": pathlib.Path("openmontage/xandao-video/microfonia.py").is_file(),
+              "elevenlabs_sdk": pathlib.Path("elevenlabs-js/package.json").is_file(),
+              "elevenlabs_skills": pathlib.Path("elevenlabs-skills/README.md").is_file(),
+          }
+          output = pathlib.Path("integracao-status.json")
+          output.write_text(json.dumps({"repositories": checks, "api_key": "not_checked", "video_render": "not_run"}, indent=2))
+          print(output.read_text())
+          assert all(checks.values())
+          PY
+
+      - name: Exportar relatorio
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xandao-Studio-Relatorio-Integracoes
+          path: integracao-status.json
+          retention-days: 7
+          if-no-files-found: error
