@@ -1,0 +1,31 @@
+name: Xandao Studio - Voz e Animacao Sincronizadas
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  montar-teste:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Carregar VoiceStudio
+        uses: actions/checkout@v4
+      - name: Instalar recursos de video
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          python3 -m pip install --user "Pillow>=10,<13"
+      - name: Narrar quatro cenas e sincronizar animacoes
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+        run: python3 xandao-production/teste-voz-animacao.py
+      - name: Entregar MP4 integrado
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xandao-Teste-Voz-Animacao-MP4
+          path: xandao-outputs/Xandao-Teste-Voz-Animacao.mp4
+          if-no-files-found: error
+          retention-days: 7
