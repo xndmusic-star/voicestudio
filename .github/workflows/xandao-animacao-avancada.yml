@@ -1,0 +1,34 @@
+name: Xandao Studio - Demo de Animacao Avancada
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  renderizar-demonstracao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Obter codigo do VoiceStudio
+        uses: actions/checkout@v4
+      - name: Preparar FFmpeg e fontes
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+      - name: Instalar biblioteca visual
+        run: python3 -m pip install --user "Pillow>=10,<13"
+      - name: Renderizar quadros com movimento real
+        run: python3 xandao-production/teste-animacao.py
+      - name: Conferir arquivo
+        run: |
+          test -s xandao-outputs/Xandao-Demo-Animacao-Real.mp4
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 xandao-outputs/Xandao-Demo-Animacao-Real.mp4
+      - name: Publicar demonstracao MP4
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xandao-Demo-Animacao-Real-MP4
+          path: xandao-outputs/Xandao-Demo-Animacao-Real.mp4
+          retention-days: 7
+          if-no-files-found: error
