@@ -1,0 +1,49 @@
+name: Xandao Studio - Teste do Motor Visual
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  testar-motor-visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Acessar projeto VoiceStudio
+        uses: actions/checkout@v4
+
+      - name: Preparar motor FFmpeg
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+          ffmpeg -hide_banner -filters | grep -E 'drawtext|showwaves|overlay|zoompan|gblur'
+
+      - name: Renderizar teste tecnico de movimento, tipografia e audio
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p xandao-outputs
+          ffmpeg -hide_banner -loglevel error -y \
+            -f lavfi -i 'testsrc2=size=1280x720:rate=24' \
+            -f lavfi -i 'sine=frequency=220:sample_rate=48000' \
+            -filter_complex "[0:v]eq=contrast=1.18:saturation=0.78,gblur=sigma=2,drawbox=x=55:y=55:w=1170:h=610:color=0x0b1927@0.68:t=fill,drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='XANDAO STUDIO':fontcolor=white:fontsize=72:x=(w-text_w)/2:y=(h-text_h)/2-70+25*sin(t*2),drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf:text='TESTE DE MOVIMENTO E EFEITOS':fontcolor=0x72e6ff:fontsize=29:x=(w-text_w)/2:y=(h-text_h)/2+80,format=yuv420p[v];[1:a]volume=0.04[a]" \
+            -map '[v]' -map '[a]' -t 6 -r 24 \
+            -c:v libx264 -preset veryfast -crf 23 -c:a aac -b:a 128k \
+            -movflags +faststart xandao-outputs/Xandao-Teste-Motor-Visual.mp4
+          ffprobe -v error -show_entries format=duration,size \
+            -of default=noprint_wrappers=1 xandao-outputs/Xandao-Teste-Motor-Visual.mp4
+          test -s xandao-outputs/Xandao-Teste-Motor-Visual.mp4
+
+      - name: Disponibilizar amostra MP4
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xandao-Teste-Motor-Visual-MP4
+          path: xandao-outputs/Xandao-Teste-Motor-Visual.mp4
+          if-no-files-found: error
+          retention-days: 7
