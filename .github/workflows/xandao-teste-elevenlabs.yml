@@ -1,0 +1,54 @@
+name: Xandao Studio - Testar ElevenLabs
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  testar-voz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validar chave e gerar amostra curta
+        env:
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const key = process.env.ELEVENLABS_API_KEY;
+          if (!key) { console.error("Segredo ELEVENLABS_API_KEY nao encontrado."); process.exit(1); }
+          // Amostra curta de proposito, para consumo minimo de creditos.
+          const request = {
+            text: "Teste de voz do Xandão Studio.",
+            model_id: "eleven_multilingual_v2",
+            output_format: "mp3_44100_128"
+          };
+          (async () => {
+            const response = await fetch("https://api.elevenlabs.io/v1/text-to-speech/JBFqnCBsd6RMkjVDRZzb", {
+              method: "POST",
+              headers: { "xi-api-key":key, "Content-Type":"application/json", "Accept":"audio/mpeg" },
+              body: JSON.stringify(request)
+            });
+            console.log("HTTP status:",response.status);
+            if (!response.ok) {
+              // Não revelar resposta crua que possa conter dados de conta.
+              if (response.status === 401) throw new Error("ElevenLabs recusou a autenticacao (401). Confira a chave e permissoes.");
+              if (response.status === 403) throw new Error("Permissao negada pela ElevenLabs (403).");
+              if (response.status === 429) throw new Error("Limite de consumo/solicitacoes atingido (429).");
+              throw new Error("ElevenLabs retornou erro HTTP " + response.status);
+            }
+            const bytes = Buffer.from(await response.arrayBuffer());
+            if (bytes.length < 1000) throw new Error("Resposta de audio incompleta.");
+            fs.writeFileSync("xandao-teste-voz.mp3",bytes);
+            console.log("Teste bem-sucedido. MP3:",bytes.length,"bytes.");
+          })().catch(e => { console.error(e.message); process.exitCode=1; });
+          NODE
+      - name: Baixar voz de teste
+        uses: actions/upload-artifact@v4
+        with:
+          name: Xandao-Studio-Voice-Test
+          path: xandao-teste-voz.mp3
+          retention-days: 3
+          if-no-files-found: error
